@@ -19,6 +19,7 @@ interface UseAnnotationRegionCommandsParams {
 	setSelectedZoomId: Dispatch<SetStateAction<string | null>>;
 	nextAnnotationIdRef: MutableRefObject<number>;
 	nextAnnotationZIndexRef: MutableRefObject<number>;
+	handleSeek?: (time: number, options?: { pause?: boolean }) => void;
 }
 
 export function clampSpotlightOpacity(value: number): number {
@@ -33,6 +34,7 @@ export function useAnnotationRegionCommands({
 	setSelectedZoomId,
 	nextAnnotationIdRef,
 	nextAnnotationZIndexRef,
+	handleSeek,
 }: UseAnnotationRegionCommandsParams) {
 	const handleAnnotationAdded = useCallback(
 		(span: Span, trackIndex = 0) => {
@@ -186,6 +188,13 @@ export function useAnnotationRegionCommands({
 		(id: string, disabled: boolean) => updateRegion(id, { disabled }),
 		[updateRegion],
 	);
+	const handleAnnotationFocusStart = useCallback(
+		(startMs: number) => {
+			if (!Number.isFinite(startMs)) return;
+			handleSeek?.(Math.max(0, startMs) / 1000, { pause: true });
+		},
+		[handleSeek],
+	);
 	const handleAnnotationPositionChange = useCallback(
 		(id: string, position: { x: number; y: number }) => updateRegion(id, { position }),
 		[updateRegion],
@@ -208,6 +217,7 @@ export function useAnnotationRegionCommands({
 		handleAnnotationSpotlightOpacityChange,
 		handleApplySpotlightOpacityToAll,
 		handleAnnotationDisabledChange,
+		handleAnnotationFocusStart,
 		handleAnnotationPositionChange,
 		handleAnnotationSizeChange,
 	};

@@ -4,6 +4,7 @@ import {
 	AlignRight,
 	TextB as Bold,
 	CaretDown as ChevronDown,
+	Flashlight,
 	ImageSquare as ImageIcon,
 	Info,
 	TextItalic as Italic,
@@ -43,6 +44,7 @@ interface AnnotationSettingsPanelProps {
 	onFigureDataChange?: (figureData: FigureData) => void;
 	onBlurIntensityChange?: (intensity: number) => void;
 	onBlurColorChange?: (color: string) => void;
+	onSpotlightOpacityChange?: (opacity: number) => void;
 	onDelete: () => void;
 }
 
@@ -67,6 +69,7 @@ export function AnnotationSettingsPanel({
 	onFigureDataChange,
 	onBlurIntensityChange,
 	onBlurColorChange,
+	onSpotlightOpacityChange,
 	onDelete,
 }: AnnotationSettingsPanelProps) {
 	const t = useScopedT("editor");
@@ -157,7 +160,7 @@ export function AnnotationSettingsPanel({
 						onValueChange={(value) => onTypeChange(value as AnnotationType)}
 						className="mb-6"
 					>
-						<TabsList className="mb-4 bg-foreground/5 border border-foreground/5 p-1 w-full grid grid-cols-4 h-auto rounded-xl">
+						<TabsList className="mb-4 bg-foreground/5 border border-foreground/5 p-1 w-full grid grid-cols-5 h-auto rounded-xl">
 							<TabsTrigger
 								value="text"
 								className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-muted-foreground py-2 rounded-lg transition-all gap-2"
@@ -197,6 +200,13 @@ export function AnnotationSettingsPanel({
 							>
 								<SquareDashed className="w-4 h-4" />
 								{t("annotations.blur")}
+							</TabsTrigger>
+							<TabsTrigger
+								value="spotlight"
+								className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-muted-foreground py-2 rounded-lg transition-all gap-2"
+							>
+								<Flashlight className="w-4 h-4" />
+								{t("annotations.spotlight", "Spotlight")}
 							</TabsTrigger>
 						</TabsList>
 
@@ -657,6 +667,34 @@ export function AnnotationSettingsPanel({
 										/>
 									</PopoverContent>
 								</Popover>
+							</div>
+						</TabsContent>
+
+						<TabsContent value="spotlight" className="mt-0 space-y-4">
+							<div className="p-4 bg-foreground/5 rounded-xl border border-foreground/10">
+								<div className="w-full space-y-3">
+									<span className="text-xs font-medium text-foreground">
+										{t(
+											"annotations.spotlightOpacity",
+											"Spotlight opacity: {{opacity}}%",
+											{
+												opacity: Math.round(
+													annotation.spotlightOpacity ?? 50,
+												),
+											},
+										)}
+									</span>
+									<Slider
+										value={[annotation.spotlightOpacity ?? 50]}
+										onValueChange={([value]) =>
+											onSpotlightOpacityChange?.(value)
+										}
+										min={0}
+										max={100}
+										step={1}
+										className="w-full"
+									/>
+								</div>
 							</div>
 						</TabsContent>
 

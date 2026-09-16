@@ -6,7 +6,10 @@ import {
 	DEFAULT_ANNOTATION_SIZE,
 	DEFAULT_ANNOTATION_STYLE,
 	DEFAULT_FIGURE_DATA,
+	DEFAULT_SPOTLIGHT_OPACITY,
 	type FigureData,
+	MAX_SPOTLIGHT_OPACITY,
+	MIN_SPOTLIGHT_OPACITY,
 } from "../types";
 
 interface UseAnnotationRegionCommandsParams {
@@ -16,6 +19,11 @@ interface UseAnnotationRegionCommandsParams {
 	setSelectedZoomId: Dispatch<SetStateAction<string | null>>;
 	nextAnnotationIdRef: MutableRefObject<number>;
 	nextAnnotationZIndexRef: MutableRefObject<number>;
+}
+
+export function clampSpotlightOpacity(value: number): number {
+	if (!Number.isFinite(value)) return DEFAULT_SPOTLIGHT_OPACITY;
+	return Math.min(MAX_SPOTLIGHT_OPACITY, Math.max(MIN_SPOTLIGHT_OPACITY, value));
 }
 
 export function useAnnotationRegionCommands({
@@ -115,6 +123,10 @@ export function useAnnotationRegionCommands({
 					} else if (type === "blur") {
 						updated.content = "";
 						if (region.blurIntensity === undefined) updated.blurIntensity = 20;
+					} else if (type === "spotlight") {
+						updated.content = "";
+						if (region.spotlightOpacity === undefined)
+							updated.spotlightOpacity = DEFAULT_SPOTLIGHT_OPACITY;
 					}
 					return updated;
 				}),
@@ -154,6 +166,26 @@ export function useAnnotationRegionCommands({
 		(id: string, blurColor: string) => updateRegion(id, { blurColor }),
 		[updateRegion],
 	);
+	const handleAnnotationSpotlightOpacityChange = useCallback(
+		(id: string, spotlightOpacity: number) =>
+			updateRegion(id, { spotlightOpacity: clampSpotlightOpacity(spotlightOpacity) }),
+		[updateRegion],
+	);
+	const handleApplySpotlightOpacityToAll = useCallback(
+		(spotlightOpacity: number) => {
+			const value = clampSpotlightOpacity(spotlightOpacity);
+			setAnnotationRegions((current) =>
+				current.map((region) =>
+					region.type === "spotlight" ? { ...region, spotlightOpacity: value } : region,
+				),
+			);
+		},
+		[setAnnotationRegions],
+	);
+	const handleAnnotationDisabledChange = useCallback(
+		(id: string, disabled: boolean) => updateRegion(id, { disabled }),
+		[updateRegion],
+	);
 	const handleAnnotationPositionChange = useCallback(
 		(id: string, position: { x: number; y: number }) => updateRegion(id, { position }),
 		[updateRegion],
@@ -173,6 +205,9 @@ export function useAnnotationRegionCommands({
 		handleAnnotationFigureDataChange,
 		handleAnnotationBlurIntensityChange,
 		handleAnnotationBlurColorChange,
+		handleAnnotationSpotlightOpacityChange,
+		handleApplySpotlightOpacityToAll,
+		handleAnnotationDisabledChange,
 		handleAnnotationPositionChange,
 		handleAnnotationSizeChange,
 	};

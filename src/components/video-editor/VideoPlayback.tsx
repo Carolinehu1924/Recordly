@@ -1051,6 +1051,11 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				// Reset camera container to identity
 				cameraContainer.scale.set(1);
 				cameraContainer.position.set(0, 0);
+				// The reset drops the active zoom from the Pixi scene while the annotation
+				// overlay keeps its last scene transform. While paused, the ticker only
+				// recomposes on request, so ask for one to re-apply the zoom and keep
+				// annotation editing aligned with the visible frame.
+				requestPausedFrameRefresh();
 
 				const selectedId = selectedZoomIdRef.current;
 				const activeRegion = selectedId
@@ -1062,6 +1067,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			}
 		}, [
 			updateOverlayForRegion,
+			requestPausedFrameRefresh,
 			cropRegion,
 			borderRadius,
 			padding,

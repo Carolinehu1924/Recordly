@@ -17,13 +17,21 @@ export interface SpotlightRect {
 	height: number;
 }
 
+export interface SpotlightHole extends SpotlightRect {
+	/** How fully the hole is cut out (0-1). Defaults to 1. */
+	strength?: number;
+}
+
 export interface SpotlightMaskPaintOptions {
 	/** Area that gets dimmed, usually the video rect in canvas coordinates. */
 	area: SpotlightRect;
 	/** Corner radius of the dimmed area so it follows the video's rounded corners. */
 	areaRadius: number;
-	/** Areas kept at full brightness. Overlapping holes merge instead of stacking. */
-	holes: SpotlightRect[];
+	/**
+	 * Areas kept bright. Full-strength holes merge instead of stacking; partial holes
+	 * are cut with their strength so staggered fades stay smooth.
+	 */
+	holes: SpotlightHole[];
 	holeRadius: number;
 	/** Dimming alpha between 0 and 1. */
 	alpha: number;
@@ -82,6 +90,21 @@ export function getSpotlightDimAlpha(
 	return clamp01(alpha);
 }
 
+/**
+ * Cut-out strength (0-1) for each spotlight, in the same order as the input.
+ * The dim layer follows the strongest fade, so each hole is weighted by its own
+ * fade relative to that. A lone spotlight, or spotlights fading together, stay at 1.
+ */
+export function getSpotlightHoleStrengths(
+	spotlights: readonly AnnotationRegion[],
+	timeMs: number,
+): number[] {
+	const fades = spotlights.map((spotlight) => getSpotlightFadeFactor(spotlight, timeMs));
+	const maxFade = Math.max(0, ...fades);
+	if (maxFade <= 0) return fades.map(() => 0);
+	return fades.map((fade) => clamp01(fade / maxFade));
+}
+
 function clampRadius(rect: SpotlightRect, radius: number): number {
 	return Math.max(0, Math.min(radius, rect.width / 2, rect.height / 2));
 }
@@ -108,11 +131,24 @@ export function paintSpotlightMask(
 
 	ctx.globalCompositeOperation = "destination-out";
 	ctx.fillStyle = "#000";
-	ctx.beginPath();
-	for (const hole of validHoles) {
-		ctx.roundRect(hole.x, hole.y, hole.width, hole.height, clampRadius(hole, holeRadius));
+
+	const fullHoles = validHoles.filter((hole) => clamp01(hole.strength ?? 1) >= 1);
+	if (fullHoles.length > 0) {
+		ctx.beginPath();
+		for (const hole of fullHoles) {
+			ctx.roundRect(hole.x, hole.y, hole.width, hole.height, clampRadius(hole, holeRadius));
+		}
+		ctx.fill();
 	}
-	ctx.fill();
+
+	for (const hole of validHoles) {
+		const strength = clamp01(hole.strength ?? 1);
+		if (strength <= 0 || strength >= 1) continue;
+		ctx.globalAlpha = strength;
+		ctx.beginPath();
+		ctx.roundRect(hole.x, hole.y, hole.width, hole.height, clampRadius(hole, holeRadius));
+		ctx.fill();
+	}
 	ctx.restore();
 	return true;
 }

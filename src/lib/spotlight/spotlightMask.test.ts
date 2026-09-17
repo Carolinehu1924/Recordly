@@ -4,6 +4,7 @@ import {
 	getActiveSpotlights,
 	getSpotlightDimAlpha,
 	getSpotlightFadeFactor,
+	getSpotlightHoleStrengths,
 	paintSpotlightMask,
 	SPOTLIGHT_FADE_MS,
 } from "./spotlightMask";
@@ -67,6 +68,32 @@ describe("getSpotlightDimAlpha", () => {
 	});
 });
 
+describe("getSpotlightHoleStrengths", () => {
+	it("keeps a lone spotlight fully cut out while it fades", () => {
+		const r = region({});
+		expect(getSpotlightHoleStrengths([r], 1000 + SPOTLIGHT_FADE_MS / 2)).toEqual([1]);
+	});
+
+	it("fades in a spotlight that starts while another is fully visible", () => {
+		const visible = region({ id: "a", startMs: 0, endMs: 5000 });
+		const fadingIn = region({ id: "b", startMs: 2000, endMs: 5000 });
+		const [a, b] = getSpotlightHoleStrengths([visible, fadingIn], 2000 + SPOTLIGHT_FADE_MS / 2);
+		expect(a).toBe(1);
+		expect(b).toBeCloseTo(0.5);
+	});
+
+	it("fades out a spotlight that ends while another stays visible", () => {
+		const fadingOut = region({ id: "a", startMs: 0, endMs: 3000 });
+		const visible = region({ id: "b", startMs: 1000, endMs: 6000 });
+		const [a, b] = getSpotlightHoleStrengths(
+			[fadingOut, visible],
+			3000 - SPOTLIGHT_FADE_MS / 4,
+		);
+		expect(a).toBeCloseTo(0.25);
+		expect(b).toBe(1);
+	});
+});
+
 describe("paintSpotlightMask", () => {
 	function mockContext() {
 		return {
@@ -77,6 +104,7 @@ describe("paintSpotlightMask", () => {
 			fill: vi.fn(),
 			fillStyle: "",
 			globalCompositeOperation: "source-over",
+			globalAlpha: 1,
 		} as unknown as CanvasRenderingContext2D & { roundRect: ReturnType<typeof vi.fn> };
 	}
 
@@ -111,5 +139,25 @@ describe("paintSpotlightMask", () => {
 			}),
 		).toBe(false);
 		expect(ctx.fill).not.toHaveBeenCalled();
+	});
+
+	it("cuts partially faded holes with their own strength", () => {
+		const ctx = mockContext();
+		const alphas: number[] = [];
+		(ctx.fill as ReturnType<typeof vi.fn>).mockImplementation(() => {
+			alphas.push(ctx.globalAlpha);
+		});
+		paintSpotlightMask(ctx, {
+			area: { x: 0, y: 0, width: 100, height: 100 },
+			areaRadius: 0,
+			holes: [
+				{ x: 0, y: 0, width: 10, height: 10 },
+				{ x: 50, y: 50, width: 10, height: 10, strength: 0.4 },
+			],
+			holeRadius: 0,
+			alpha: 0.5,
+		});
+		// Dim layer, merged full-strength holes, then the partial hole.
+		expect(alphas).toEqual([1, 1, 0.4]);
 	});
 });

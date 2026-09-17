@@ -6,6 +6,7 @@ import {
 import {
 	getActiveSpotlights,
 	getSpotlightDimAlpha,
+	getSpotlightHoleStrengths,
 	paintSpotlightMask,
 	SPOTLIGHT_CORNER_RADIUS,
 } from "@/lib/spotlight/spotlightMask";
@@ -88,11 +89,12 @@ function renderSpotlightMask(
 	bufferCtx.clearRect(0, 0, buffer.width, buffer.height);
 
 	const sceneScale = sceneTransform?.scale ?? 1;
+	const strengths = getSpotlightHoleStrengths(spotlights, currentTimeMs);
 	const painted = paintSpotlightMask(bufferCtx, {
 		area: transformAnnotationRect(annotationRect, sceneTransform),
 		areaRadius: videoCornerRadius * sceneScale,
-		holes: spotlights.map((spotlight) =>
-			transformAnnotationRect(
+		holes: spotlights.map((spotlight, index) => ({
+			...transformAnnotationRect(
 				{
 					x: annotationRect.x + (spotlight.position.x / 100) * annotationRect.width,
 					y: annotationRect.y + (spotlight.position.y / 100) * annotationRect.height,
@@ -101,7 +103,8 @@ function renderSpotlightMask(
 				},
 				sceneTransform,
 			),
-		),
+			strength: strengths[index],
+		})),
 		holeRadius: SPOTLIGHT_CORNER_RADIUS * scaleFactor * sceneScale,
 		alpha,
 	});

@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import {
 	getActiveSpotlights,
 	getSpotlightDimAlpha,
+	getSpotlightHoleStrengths,
 	paintSpotlightMask,
 	SPOTLIGHT_CORNER_RADIUS,
 } from "@/lib/spotlight/spotlightMask";
@@ -55,15 +56,17 @@ export function SpotlightMaskOverlay({
 		const spotlights = getActiveSpotlights(annotations, timeMs);
 		if (spotlights.length === 0) return;
 
+		const strengths = getSpotlightHoleStrengths(spotlights, timeMs);
 		ctx.setTransform(resolution, 0, 0, resolution, 0, 0);
 		paintSpotlightMask(ctx, {
 			area: { x: 0, y: 0, width, height },
 			areaRadius: videoCornerRadius,
-			holes: spotlights.map((spotlight) => ({
+			holes: spotlights.map((spotlight, index) => ({
 				x: (spotlight.position.x / 100) * width,
 				y: (spotlight.position.y / 100) * height,
 				width: (spotlight.size.width / 100) * width,
 				height: (spotlight.size.height / 100) * height,
+				strength: strengths[index],
 			})),
 			holeRadius: SPOTLIGHT_CORNER_RADIUS * (width / BASE_PREVIEW_WIDTH),
 			alpha: getSpotlightDimAlpha(spotlights, timeMs),

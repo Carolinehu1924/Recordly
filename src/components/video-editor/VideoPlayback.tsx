@@ -2455,6 +2455,54 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 								</div>
 							</div>
 						) : null}
+						{(() => {
+							// Spotlight dimming sits below captions so, as in export, captions are
+							// never dimmed. Drag handles stay in the annotation layer above.
+							const spotlightAreaWidth =
+								annotationRecordingRect.width ||
+								overlayRef.current?.clientWidth ||
+								800;
+							const spotlightAreaHeight =
+								annotationRecordingRect.height ||
+								overlayRef.current?.clientHeight ||
+								600;
+							const spotlightTimeMs = Math.round(timelineTime * 1000);
+
+							return (
+								<div
+									className="absolute inset-0"
+									style={{
+										pointerEvents: "none",
+										transform: `matrix(${annotationSceneTransform.scale}, 0, 0, ${annotationSceneTransform.scale}, ${annotationSceneTransform.x}, ${annotationSceneTransform.y})`,
+										transformOrigin: "top left",
+									}}
+								>
+									<div
+										className="absolute"
+										style={{
+											pointerEvents: "none",
+											left: annotationRecordingRect.x || 0,
+											top: annotationRecordingRect.y || 0,
+											width: spotlightAreaWidth,
+											height: spotlightAreaHeight,
+										}}
+									>
+										<SpotlightMaskOverlay
+											annotations={annotationRegions || []}
+											timeMs={spotlightTimeMs}
+											width={spotlightAreaWidth}
+											height={spotlightAreaHeight}
+											videoCornerRadius={scalePreviewBorderRadius(
+												spotlightAreaWidth,
+												spotlightAreaHeight,
+												borderRadius,
+											)}
+											sceneScale={annotationSceneTransform.scale}
+										/>
+									</div>
+								</div>
+							);
+						})()}
 						{!isGap && activeCaptionLayout && autoCaptionSettings ? (
 							<div
 								className="absolute inset-x-0 flex justify-center"
@@ -2730,72 +2778,46 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 										}
 									};
 
-									const spotlightAreaWidth =
-										annotationRecordingRect.width ||
-										overlayRef.current?.clientWidth ||
-										800;
-									const spotlightAreaHeight =
-										annotationRecordingRect.height ||
-										overlayRef.current?.clientHeight ||
-										600;
-
-									return [
-										<SpotlightMaskOverlay
-											key="spotlight-mask"
-											annotations={filtered}
-											timeMs={timeMs}
-											width={spotlightAreaWidth}
-											height={spotlightAreaHeight}
-											videoCornerRadius={scalePreviewBorderRadius(
-												spotlightAreaWidth,
-												spotlightAreaHeight,
-												borderRadius,
-											)}
-											sceneScale={annotationSceneTransform.scale}
-										/>,
-										...sorted.map((annotation) => (
-											<AnnotationOverlay
-												key={annotation.id}
-												annotation={annotation}
-												isSelected={annotation.id === selectedAnnotationId}
-												containerWidth={
+									return sorted.map((annotation) => (
+										<AnnotationOverlay
+											key={annotation.id}
+											annotation={annotation}
+											isSelected={annotation.id === selectedAnnotationId}
+											containerWidth={
+												annotationRecordingRect.width ||
+												overlayRef.current?.clientWidth ||
+												800
+											}
+											containerHeight={
+												annotationRecordingRect.height ||
+												overlayRef.current?.clientHeight ||
+												600
+											}
+											recordingRect={{
+												x: 0,
+												y: 0,
+												width:
 													annotationRecordingRect.width ||
 													overlayRef.current?.clientWidth ||
-													800
-												}
-												containerHeight={
+													800,
+												height:
 													annotationRecordingRect.height ||
 													overlayRef.current?.clientHeight ||
-													600
-												}
-												recordingRect={{
-													x: 0,
-													y: 0,
-													width:
-														annotationRecordingRect.width ||
-														overlayRef.current?.clientWidth ||
-														800,
-													height:
-														annotationRecordingRect.height ||
-														overlayRef.current?.clientHeight ||
-														600,
-												}}
-												sceneTransform={{ scale: 1, x: 0, y: 0 }}
-												interactionScale={annotationSceneTransform.scale}
-												onPositionChange={(id, position) =>
-													onAnnotationPositionChange?.(id, position)
-												}
-												onSizeChange={(id, size) =>
-													onAnnotationSizeChange?.(id, size)
-												}
-												onClick={handleAnnotationClick}
-												zIndex={annotation.zIndex}
-												isSelectedBoost={
-													annotation.id === selectedAnnotationId
-												}
-											/>
-										)),
-									];
+													600,
+											}}
+											sceneTransform={{ scale: 1, x: 0, y: 0 }}
+											interactionScale={annotationSceneTransform.scale}
+											onPositionChange={(id, position) =>
+												onAnnotationPositionChange?.(id, position)
+											}
+											onSizeChange={(id, size) =>
+												onAnnotationSizeChange?.(id, size)
+											}
+											onClick={handleAnnotationClick}
+											zIndex={annotation.zIndex}
+											isSelectedBoost={annotation.id === selectedAnnotationId}
+										/>
+									));
 								})()}
 							</div>
 						</div>
